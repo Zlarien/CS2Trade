@@ -1,0 +1,11 @@
+{
+  "source": "https://github.com/ByMykel/CSGO-API",
+  "branch": "main",
+  "commit_sha": "f2c36eb37153e439e2add2c48e5a262e20e9a132",
+  "commit_date": "2026-09-13T08:07:28Z",
+  "fetched_at": "2026-09-17T20:26:44.504915+00:00",
+  "files": [
+    "skins.json",
+    "collections.json"
+  ]
+}
