@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cs2trade
+      POSTGRES_PASSWORD: cs2trade
+      POSTGRES_DB: cs2trade
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: ../apps/api
+    env_file:
+      - ../.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ../apps/api:/app
+
+  web:
+    build:
+      context: ../apps/web
+    env_file:
+      - ../.env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    volumes:
+      - ../apps/web:/app
+
+volumes:
+  postgres_data:
