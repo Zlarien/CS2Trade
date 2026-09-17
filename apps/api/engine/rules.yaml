@@ -1,0 +1,23 @@
+# Regles de mecanique trade-up CS2, versionnees separement du code.
+# Ne rien modifier ici sans verification aupres des patch notes officiels Valve.
+
+trade_up:
+  input_count: 10
+  same_rarity_required: true
+  same_category_required: true # normal ou stattrak, jamais mixe
+  collection_mixing_allowed: true
+
+rarities_ascending:
+  - consumer_grade
+  - industrial_grade
+  - mil_spec
+  - restricted
+  - classified
+  - covert
+
+wear_ranges:
+  factory_new: [0.00, 0.07]
+  minimal_wear: [0.07, 0.15]
+  field_tested: [0.15, 0.38]
+  well_worn: [0.38, 0.45]
+  battle_scarred: [0.45, 1.00]
