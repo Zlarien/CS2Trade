@@ -8,6 +8,7 @@ class PriceQuote:
     price: float
     currency: str
     source: str
+    volume: int | None = None
 
 
 class PriceSource(ABC):
