@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.session import SESSION_COOKIE_NAME, get_session_steamid64
-from db.models import ExcludedItem
+from db.models import ExcludedItem, User
 from db.session import get_db_session as _get_db_session
 from pricing.base import PriceSource
 from pricing.skinport import SkinportPriceSource
@@ -70,3 +70,27 @@ async def get_excluded_item_ids(
         select(ExcludedItem.asset_id).where(ExcludedItem.user_steamid64 == steamid64)
     )
     return set(result.scalars().all())
+
+
+async def get_current_user(
+    steamid64: str = Depends(get_current_steamid64),
+    db_session: AsyncSession = Depends(get_db_session),
+) -> User:
+    user = await db_session.get(User, steamid64)
+    if user is None:
+        raise HTTPException(status_code=404, detail="utilisateur introuvable")
+    return user
+
+
+async def require_premium_tier(user: User = Depends(get_current_user)) -> User:
+    """Gating pour les fonctionnalites premium (ex: llm/ investisseur).
+
+    Aucune facturation branchee en V1 : le tier se change en base
+    (voir scripts/set_tier.py), jamais via une route publique.
+    """
+    if user.tier != "premium":
+        raise HTTPException(
+            status_code=403,
+            detail=f"fonctionnalite premium, ton tier actuel est '{user.tier}'",
+        )
+    return user
