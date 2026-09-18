@@ -111,3 +111,10 @@ async def test_excluded_item_is_filtered_before_recommendation(
     item_ids = {r["item_id"] for r in body["recommendations"]}
     assert item_ids == {"111"}
     assert "222" not in item_ids
+
+    # L'item exclu reste visible dans "items" (avec excluded=true) meme s'il
+    # a disparu de "recommendations" : sinon impossible de le re-inclure.
+    items_by_id = {i["item_id"]: i for i in body["items"]}
+    assert set(items_by_id) == {"111", "222"}
+    assert items_by_id["222"]["excluded"] is True
+    assert items_by_id["111"]["excluded"] is False
