@@ -44,17 +44,32 @@ def extract_identifier(raw: str) -> str:
     return candidate.rsplit("/", 1)[-1]
 
 
+class SteamApiKeyRequired(SteamProfileError):
+    pass
+
+
 async def resolve_steam_id64(
-    identifier: str, http_client: httpx.AsyncClient, steam_api_key: str
+    identifier: str, http_client: httpx.AsyncClient, steam_api_key: str | None
 ) -> str:
     if _STEAMID64_RE.match(identifier):
         return identifier
+
+    if steam_api_key is None:
+        raise SteamApiKeyRequired(
+            "cet identifiant necessite STEAM_API_KEY (vanity name) ; "
+            "utilise ton SteamID64 ou l'URL steamcommunity.com/profiles/<id> a la place"
+        )
 
     response = await http_client.get(
         RESOLVE_VANITY_URL_ENDPOINT,
         params={"key": steam_api_key, "vanityurl": identifier},
     )
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        raise SteamProfileError(
+            f"reponse Steam inattendue ({response.status_code}) lors de la resolution du profil"
+        ) from exc
     result = response.json().get("response", {})
     if result.get("success") != 1:
         raise ProfileNotFoundError(f"profil Steam introuvable pour {identifier!r}")
@@ -79,7 +94,16 @@ async def fetch_inventory(
             raise PrivateInventoryError(
                 "inventaire prive ou introuvable : rends-le public temporairement pour l'import"
             )
-        response.raise_for_status()
+        if response.status_code == 429:
+            raise SteamProfileError(
+                "Steam limite les requetes en ce moment (429), reessaie dans quelques minutes"
+            )
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise SteamProfileError(
+                f"reponse Steam inattendue ({response.status_code})"
+            ) from exc
         payload = response.json()
         if not payload.get("success"):
             raise SteamProfileError("reponse Steam invalide")

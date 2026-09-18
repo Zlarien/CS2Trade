@@ -46,7 +46,13 @@ class SkinportPriceSource(PriceSource):
         response = await self._http_client.get(
             ITEMS_ENDPOINT, params={"app_id": CS2_APP_ID, "currency": "EUR"}
         )
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError:
+            # Skinport en panne/rate-limite : pas d'exception qui casse toute
+            # la recommandation, juste "pas de prix ici" (value_item essaie
+            # la source suivante).
+            return {}
         items = response.json()
 
         catalog = {

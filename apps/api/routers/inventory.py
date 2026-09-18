@@ -15,6 +15,7 @@ from steam.public import (
     ParsedInventoryItem,
     PrivateInventoryError,
     ProfileNotFoundError,
+    SteamApiKeyRequired,
     SteamProfileError,
     extract_identifier,
     fetch_inventory,
@@ -59,14 +60,20 @@ async def get_recommendations(
         ..., description="SteamID64, URL de profil Steam, ou vanity name"
     ),
     http_client: httpx.AsyncClient = Depends(get_http_client),
-    steam_api_key: str = Depends(get_steam_api_key),
+    steam_api_key: str | None = Depends(get_steam_api_key),
     price_sources: list[PriceSource] = Depends(get_price_sources),
 ) -> dict:
-    """Import ponctuel, sans compte lie : lecture de l'inventaire public uniquement."""
+    """Import ponctuel, sans compte lie : lecture de l'inventaire public uniquement.
+
+    Un SteamID64 brut ou une URL /profiles/<id> ne necessitent aucune
+    STEAM_API_KEY ; seul un vanity name (/id/<nom>) en a besoin.
+    """
     try:
         raw_identifier = extract_identifier(identifier)
         steamid64 = await resolve_steam_id64(raw_identifier, http_client, steam_api_key)
         assets, descriptions = await fetch_inventory(steamid64, http_client)
+    except SteamApiKeyRequired as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except PrivateInventoryError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except ProfileNotFoundError as exc:

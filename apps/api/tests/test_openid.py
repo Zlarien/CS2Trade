@@ -42,6 +42,16 @@ async def test_verify_openid_callback_rejects_invalid_signature() -> None:
 
 
 @pytest.mark.asyncio
+async def test_verify_openid_callback_wraps_http_error() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503)
+
+    params = {"openid.claimed_id": VALID_CLAIMED_ID, "openid.mode": "id_res"}
+    with pytest.raises(OpenIDVerificationError, match="503"):
+        await verify_openid_callback(params, _client_with_handler(handler))
+
+
+@pytest.mark.asyncio
 async def test_verify_openid_callback_rejects_malformed_claimed_id() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, text="is_valid:true\n")

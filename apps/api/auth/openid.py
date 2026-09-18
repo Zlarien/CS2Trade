@@ -38,7 +38,12 @@ async def verify_openid_callback(
     verify_params["openid.mode"] = "check_authentication"
 
     response = await http_client.post(STEAM_OPENID_ENDPOINT, data=verify_params)
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        raise OpenIDVerificationError(
+            f"Steam a repondu {response.status_code} pendant la verification"
+        ) from exc
     if "is_valid:true" not in response.text:
         raise OpenIDVerificationError("signature OpenID refusee par Steam")
 

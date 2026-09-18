@@ -63,7 +63,13 @@ class SteamMarketPriceSource(PriceSource):
                 "market_hash_name": item_name,
             },
         )
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError:
+            # Steam renvoie souvent une erreur HTTP (pas un JSON propre) pour
+            # un item sans historique de ventes, en plus des vraies pannes :
+            # traite comme "pas de prix ici", jamais comme un crash.
+            return None
         payload = response.json()
 
         if not payload.get("success") or "median_price" not in payload:
