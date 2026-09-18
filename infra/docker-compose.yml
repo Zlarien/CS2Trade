@@ -39,6 +39,12 @@ services:
       - api
     volumes:
       - ../apps/web:/app
+      # Sans ces deux lignes, un node_modules installe cote host (ex:
+      # Windows) ecrase celui, compatible Linux, construit dans l'image :
+      # next dev demarre puis s'arrete silencieusement (binaire SWC natif
+      # incompatible). Volumes anonymes = le contenu du conteneur prime.
+      - /app/node_modules
+      - /app/.next
 
 volumes:
   postgres_data:
