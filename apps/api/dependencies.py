@@ -1,6 +1,7 @@
 import os
 from collections.abc import AsyncIterator
 
+import anthropic
 import httpx
 from fastapi import Cookie, Depends, HTTPException
 from redis.asyncio import Redis
@@ -94,3 +95,11 @@ async def require_premium_tier(user: User = Depends(get_current_user)) -> User:
             detail=f"fonctionnalite premium, ton tier actuel est '{user.tier}'",
         )
     return user
+
+
+def get_anthropic_client() -> anthropic.AsyncAnthropic:
+    """Cle resolue depuis l'environnement (ANTHROPIC_API_KEY), jamais en dur.
+
+    Surchargee en test pour ne jamais faire de vrai appel reseau.
+    """
+    return anthropic.AsyncAnthropic()

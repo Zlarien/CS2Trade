@@ -35,13 +35,27 @@ export interface PortfolioSnapshot {
   item_count: number;
 }
 
+export interface InvestorAdvice {
+  summary: string;
+  model: string;
+}
+
+export class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export function steamLoginUrl(): string {
   return `${API_URL}/auth/steam/login`;
 }
 
-async function toApiError(res: Response): Promise<Error> {
+async function toApiError(res: Response): Promise<ApiError> {
   let detail = res.statusText;
   try {
     const body = await res.json();
@@ -49,7 +63,7 @@ async function toApiError(res: Response): Promise<Error> {
   } catch {
     // reponse non-JSON, on garde le statusText
   }
-  return new Error(detail);
+  return new ApiError(res.status, detail);
 }
 
 export async function fetchPublicRecommendations(
@@ -92,4 +106,15 @@ export async function includeItem(assetId: string): Promise<void> {
     credentials: "include",
   });
   if (!res.ok && res.status !== 204) throw await toApiError(res);
+}
+
+export async function fetchInvestorAdvice(question?: string): Promise<InvestorAdvice> {
+  const res = await fetch(`${API_URL}/me/investor-advice`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question: question || null }),
+  });
+  if (!res.ok) throw await toApiError(res);
+  return res.json();
 }

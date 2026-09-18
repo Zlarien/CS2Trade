@@ -4,7 +4,7 @@ Outil qui analyse ton inventaire CS2 (Counter-Strike 2) et recommande, item par 
 
 ## Statut
 
-Moteur de calcul, import Steam (public et OpenID), recommandations et exclusions fonctionnels et testés. UI Next.js pas encore branchée (pour l'instant l'API se pilote via `/docs`). Voir `apps/api/engine/` pour le cœur de calcul (déterministe).
+Moteur de calcul, import Steam (public et OpenID), recommandations, exclusions, historique de portefeuille, tiering premium et IA investisseur fonctionnels et testés. UI Next.js minimale branchée (`apps/web`). Voir `apps/api/engine/` pour le cœur de calcul (déterministe).
 
 **Limite connue** : Steam n'expose jamais le float exact d'un item via ses APIs publiques (inventaire ou OpenID) sans un inspect link + connexion au Game Coordinator, hors scope V1. Le moteur travaille donc sur un float approximé (milieu de la plage d'usure), toujours signalé via `float_is_estimated: true` dans les reponses.
 
@@ -35,6 +35,10 @@ Deux modes, aucun ne nécessite de partager ton mot de passe Steam :
 ## Historique de la valeur du portefeuille
 
 `python -m scripts.daily_sync` recalcule la valeur totale de l'inventaire de chaque utilisateur lié et l'ajoute à `inventory_snapshots`. Pas de scheduler embarqué en V1 : à brancher sur un cron du self-hoster.
+
+## IA investisseur (premium)
+
+`POST /me/investor-advice` synthétise en langage naturel les recommandations déjà calculées par `engine/` (jamais l'inverse : voir `llm/investor.py`). Nécessite `ANTHROPIC_API_KEY` et un compte en tier `premium`. Aucune route publique pour passer premium soi-même tant qu'aucune facturation n'est branchée : `python -m scripts.set_tier <steamid64> premium` est le seul levier, réservé à l'opérateur du self-host.
 
 ## Licence
 

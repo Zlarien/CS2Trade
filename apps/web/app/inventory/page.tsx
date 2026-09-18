@@ -5,7 +5,9 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import {
+  ApiError,
   excludeItem,
+  fetchInvestorAdvice,
   fetchMyRecommendations,
   fetchPortfolioHistory,
   fetchPublicRecommendations,
@@ -118,6 +120,8 @@ function InventoryView() {
 
       {history.length > 1 && <PortfolioChart snapshots={history} />}
 
+      {data.authenticated && <InvestorAdviceBox />}
+
       <table>
         <thead>
           <tr>
@@ -156,6 +160,54 @@ function InventoryView() {
         </tbody>
       </table>
     </main>
+  );
+}
+
+function InvestorAdviceBox() {
+  const [question, setQuestion] = useState("");
+  const [summary, setSummary] = useState<string | null>(null);
+  const [premiumRequired, setPremiumRequired] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function ask() {
+    setLoading(true);
+    setError(null);
+    setPremiumRequired(false);
+    try {
+      const advice = await fetchInvestorAdvice(question.trim() || undefined);
+      setSummary(advice.summary);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        setPremiumRequired(true);
+      } else {
+        setError(err instanceof Error ? err.message : "erreur inconnue");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section>
+      <h2>IA investisseur (premium)</h2>
+      <p>
+        Synthetise en langage naturel les recommandations deja calculees ci-dessous. Ne
+        recalcule jamais un prix ni une probabilite.
+      </p>
+      <input
+        value={question}
+        onChange={(event) => setQuestion(event.target.value)}
+        placeholder="Question optionnelle, ex: par quoi je commence ?"
+        aria-label="Question pour l'IA investisseur"
+      />
+      <button onClick={ask} disabled={loading}>
+        {loading ? "..." : "Demander conseil"}
+      </button>
+      {premiumRequired && <p>Fonctionnalite premium, ton compte est en tier gratuit.</p>}
+      {error && <p>Erreur : {error}</p>}
+      {summary && <p>{summary}</p>}
+    </section>
   );
 }
 
