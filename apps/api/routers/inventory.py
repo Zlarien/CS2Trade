@@ -9,7 +9,7 @@ from dependencies import (
     get_steam_api_key,
 )
 from engine.recommend import InventoryItem, recommend_for_inventory
-from inventory_import import build_inventory_items
+from inventory_import import build_inventory_items, get_recommendations_for_user
 from pricing.base import PriceSource
 from steam.public import (
     ParsedInventoryItem,
@@ -100,18 +100,13 @@ async def get_my_recommendations(
 ) -> dict:
     """Compte Steam lie (OpenID) : applique les exclusions de l'utilisateur."""
     try:
-        assets, descriptions = await fetch_inventory(steamid64, http_client)
+        parsed, items, skipped_unknown, recommendations = await get_recommendations_for_user(
+            steamid64, excluded_item_ids, http_client, price_sources
+        )
     except PrivateInventoryError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except SteamProfileError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
-
-    parsed = parse_inventory(assets, descriptions)
-    items, skipped_unknown = build_inventory_items(parsed)
-
-    recommendations = await recommend_for_inventory(
-        items, excluded_item_ids=excluded_item_ids, price_sources=price_sources
-    )
 
     return {
         "steamid64": steamid64,
