@@ -8,6 +8,8 @@ Moteur de calcul, import Steam (public et OpenID), recommandations, exclusions, 
 
 **Limite connue** : Steam n'expose jamais le float exact d'un item via ses APIs publiques (inventaire ou OpenID) sans un inspect link + connexion au Game Coordinator, hors scope V1. Le moteur travaille donc sur un float approximé (milieu de la plage d'usure), toujours signalé via `float_is_estimated: true` dans les reponses.
 
+**Ce que l'outil ne fait pas** : il ne recommande jamais d'ouvrir, garder ou acheter une caisse (case) comme stratégie d'investissement. Il ne chiffre que des skins déjà identifiés dans ton inventaire, jamais le contenu potentiel d'une caisse fermée. Aucune exécution automatique de trade, aucun résultat garanti : chaque recommandation est un calcul basé sur les prix marché du moment, pas une promesse.
+
 ## Structure
 
 - `apps/web` : Next.js, présentation uniquement.
