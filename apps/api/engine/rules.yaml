@@ -6,18 +6,33 @@ trade_up:
   same_rarity_required: true
   same_category_required: true # normal ou stattrak, jamais mixe
   collection_mixing_allowed: true
+  # Frais moyen approximatif applique a la vente eventuelle du skin obtenu.
+  # A ajuster : varie selon la marketplace et le palier de commission.
+  marketplace_fee_rate: 0.12
 
+# Noms exacts tels que retournes par refdata (ByMykel/CSGO-API), du plus
+# commun au plus rare. Contraband (ex: M4A4 | Howl) volontairement absent :
+# non atteignable par trade-up.
 rarities_ascending:
-  - consumer_grade
-  - industrial_grade
-  - mil_spec
-  - restricted
-  - classified
-  - covert
+  - Consumer Grade
+  - Industrial Grade
+  - Mil-Spec Grade
+  - Restricted
+  - Classified
+  - Covert
+
+# Categories d'armes eligibles au trade-up standard. Les couteaux et gants
+# partagent des noms de rarete avec les armes (ex "Covert") mais ne
+# participent jamais a un trade-up contract.
+tradeable_weapon_categories:
+  - Pistols
+  - SMGs
+  - Rifles
+  - Heavy
 
 wear_ranges:
-  factory_new: [0.00, 0.07]
-  minimal_wear: [0.07, 0.15]
-  field_tested: [0.15, 0.38]
-  well_worn: [0.38, 0.45]
-  battle_scarred: [0.45, 1.00]
+  Factory New: [0.00, 0.07]
+  Minimal Wear: [0.07, 0.15]
+  Field-Tested: [0.15, 0.38]
+  Well-Worn: [0.38, 0.45]
+  Battle-Scarred: [0.45, 1.00]
