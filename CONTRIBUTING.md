@@ -6,6 +6,7 @@
 - `apps/api/engine/rules.yaml` encode la mécanique de jeu (raretés, plages d'usure, règles de trade-up). Toute modification doit être justifiée par une source primaire (patch notes Valve), pas par un blog ou un forum.
 - Le module `apps/api/llm/` est optionnel et protégé par le tier premium (`require_premium_tier`). Il consomme uniquement les résultats d'`engine/` en lecture seule, il ne les recalcule jamais.
 - **Caisses (cases) : jamais un conseil d'investissement.** `refdata/` ne vendore que `skins.json`/`collections.json`, volontairement sans `cases.json` : l'outil ne peut donc pas recommander d'ouvrir, garder ou acheter une caisse comme stratégie, seulement chiffrer un skin déjà en inventaire. N'ajoutez `cases.json` que pour du pricing informatif (valeur de revente de la caisse elle-même), jamais pour générer une recommandation `sell`/`trade_up`/`hold` sur le contenu potentiel d'une caisse non ouverte.
+- **Souvenir et le contrat 5x Covert : volontairement absents.** Vérifié le 18/09/2026 (steamdb.com/en/articles/cs2-trade-up-contract-guide) : depuis mai 2026 un Souvenir peut entrer dans un trade-up standard, et depuis octobre 2025 un contrat 5x Covert → couteau/gants existe. Ni l'un ni l'autre n'est implémenté (voir le détail dans `engine/rules.yaml`) : un Souvenir en inventaire est valorisé correctement mais jamais proposé en trade-up, plutôt que de risquer une EV fausse sur une règle non recroisée avec les patch notes Valve.
 
 ## Modules
 
