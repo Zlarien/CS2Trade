@@ -20,13 +20,24 @@ dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "import-linter>=2.1",
+    "aiosqlite>=0.20",
 ]
 
 [tool.setuptools]
-py-modules = ["main", "dependencies"]
+py-modules = ["main", "dependencies", "inventory_import"]
 
 [tool.setuptools.packages.find]
-include = ["engine*", "pricing*", "refdata*", "auth*", "routers*", "llm*", "db*", "steam*"]
+include = [
+    "engine*",
+    "pricing*",
+    "refdata*",
+    "auth*",
+    "routers*",
+    "llm*",
+    "db*",
+    "steam*",
+    "scripts*",
+]
 
 [tool.ruff]
 line-length = 100
