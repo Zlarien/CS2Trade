@@ -8,10 +8,11 @@ from dependencies import (
     get_price_sources,
     get_steam_api_key,
 )
-from engine.recommend import recommend_for_inventory
+from engine.recommend import InventoryItem, recommend_for_inventory
 from inventory_import import build_inventory_items
 from pricing.base import PriceSource
 from steam.public import (
+    ParsedInventoryItem,
     PrivateInventoryError,
     ProfileNotFoundError,
     SteamProfileError,
@@ -22,6 +23,33 @@ from steam.public import (
 )
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
+
+
+def _serialize_items(
+    parsed_items: list[ParsedInventoryItem],
+    known_items: list[InventoryItem],
+    excluded_item_ids: set[str],
+) -> list[dict]:
+    """Vue complete de l'inventaire, y compris les items exclus.
+
+    Necessaire car engine.recommend filtre les items exclus AVANT tout
+    calcul (jamais seulement masques cote UI) : ils n'apparaissent donc
+    jamais dans "recommendations". Sans cette liste, l'UI n'aurait aucun
+    moyen d'afficher un item exclu pour permettre de le re-inclure.
+    """
+    known_ids = {item.item_id for item in known_items}
+    return [
+        {
+            "item_id": p.asset_id,
+            "base_name": p.base_name,
+            "wear": p.wear,
+            "stattrak": p.stattrak,
+            "market_hash_name": p.market_hash_name,
+            "excluded": p.asset_id in excluded_item_ids,
+        }
+        for p in parsed_items
+        if p.asset_id in known_ids
+    ]
 
 
 @router.get("/recommendations")
@@ -54,9 +82,11 @@ async def get_recommendations(
 
     return {
         "steamid64": steamid64,
+        "authenticated": False,
         "item_count": len(items),
         "skipped_unknown_items": skipped_unknown,
         "float_is_estimated": True,
+        "items": _serialize_items(parsed, items, set()),
         "recommendations": recommendations,
     }
 
@@ -85,9 +115,11 @@ async def get_my_recommendations(
 
     return {
         "steamid64": steamid64,
+        "authenticated": True,
         "item_count": len(items),
         "excluded_count": len(excluded_item_ids),
         "skipped_unknown_items": skipped_unknown,
         "float_is_estimated": True,
+        "items": _serialize_items(parsed, items, excluded_item_ids),
         "recommendations": recommendations,
     }
