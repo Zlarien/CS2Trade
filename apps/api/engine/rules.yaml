@@ -1,6 +1,24 @@
 # Regles de mecanique trade-up CS2, versionnees separement du code.
 # Ne rien modifier ici sans verification aupres des patch notes officiels Valve.
-
+#
+# Contrat standard (input_count=10, ci-dessous) verifie le 18/09/2026 aupres
+# de steamdb.com/en/articles/cs2-trade-up-contract-guide : nombre d'items,
+# regle de collection (chaque collection representee doit deja contenir un
+# item a la rarete cible), tirage de la collection puis du skin de sortie,
+# et formule du float (normaliser/moyenner/remapper) correspondent tous a
+# ce qui est implemente dans engine/tradeup.py.
+#
+# Deux ecarts connus, NON implementes volontairement (pas de source
+# primaire Valve croisee, mieux vaut ne pas calculer plutot que calculer
+# faux) :
+# - Depuis le 22/05/2026, un skin Souvenir peut entrer dans un contrat
+#   standard (il perd ses attributs Souvenir, compte une rarete au-dessus
+#   des autres inputs). engine/recommend.py exclut deliberement les
+#   Souvenir de tout regroupement trade-up ; ils restent valorises
+#   correctement (prix Souvenir) mais jamais proposes en TRADE_UP.
+# - Depuis le 22/10/2025, un contrat 5x Covert -> 1 couteau/gants
+#   ("Exceedingly Rare") existe. Non implemente : input_count fixe a 10,
+#   aucune donnee de reference pour les couteaux/gants par collection.
 trade_up:
   input_count: 10
   same_rarity_required: true

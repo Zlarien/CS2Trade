@@ -28,7 +28,9 @@ async def sync_user_portfolio(
     priced_count = 0
     for item in items:
         wear = rules.classify_wear(item.float_value)
-        valuation = await value_item(item.base_name, wear, price_sources, stattrak=item.stattrak)
+        valuation = await value_item(
+            item.base_name, wear, price_sources, stattrak=item.stattrak, souvenir=item.souvenir
+        )
         if valuation is not None:
             total_value += valuation.price
             priced_count += 1

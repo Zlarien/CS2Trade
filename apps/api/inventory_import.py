@@ -24,6 +24,7 @@ def build_inventory_items(
                 base_name=entry.base_name,
                 float_value=estimated_float,
                 stattrak=entry.stattrak,
+                souvenir=entry.souvenir,
             )
         )
     return items, skipped_unknown

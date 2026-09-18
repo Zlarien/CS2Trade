@@ -44,6 +44,7 @@ def _serialize_items(
             "base_name": p.base_name,
             "wear": p.wear,
             "stattrak": p.stattrak,
+            "souvenir": p.souvenir,
             "market_hash_name": p.market_hash_name,
             "excluded": p.asset_id in excluded_item_ids,
         }

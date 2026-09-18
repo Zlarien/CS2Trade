@@ -22,6 +22,7 @@ class InventoryItem:
     base_name: str
     float_value: float
     stattrak: bool = False
+    souvenir: bool = False
 
 
 @dataclass(frozen=True)
@@ -34,6 +35,14 @@ class ItemRecommendation:
 
 
 def _group_key(item: InventoryItem) -> tuple[str, str, bool] | None:
+    if item.souvenir:
+        # Depuis le 22/05/2026, un Souvenir peut entrer dans un trade-up
+        # contract (il perd ses attributs Souvenir, et compte une rarete
+        # au-dessus des autres inputs). Regle non implementee : on ne
+        # risque pas une EV fausse, un Souvenir n'est jamais groupe et
+        # tombe dans le chemin individuel (valorisation correcte quand
+        # meme, voir la construction du market_hash_name plus bas).
+        return None
     skin = get_skin(item.base_name)
     if skin is None:
         return None
@@ -108,7 +117,9 @@ async def recommend_for_inventory(
             continue
 
         wear = rules.classify_wear(item.float_value)
-        valuation = await value_item(item.base_name, wear, price_sources, stattrak=item.stattrak)
+        valuation = await value_item(
+            item.base_name, wear, price_sources, stattrak=item.stattrak, souvenir=item.souvenir
+        )
         if valuation is None:
             recommendations[item.item_id] = ItemRecommendation(
                 item_id=item.item_id,

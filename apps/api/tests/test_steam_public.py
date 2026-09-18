@@ -128,6 +128,27 @@ def test_parse_inventory_extracts_stattrak_and_wear() -> None:
     assert item.tradable is True
 
 
+def test_parse_inventory_extracts_souvenir() -> None:
+    assets = [{"assetid": "222", "classid": "c2", "instanceid": "0", "amount": "1"}]
+    descriptions = [
+        {
+            "classid": "c2",
+            "instanceid": "0",
+            "market_hash_name": "Souvenir AWP | Asiimov (Field-Tested)",
+            "tradable": 1,
+            "marketable": 1,
+        }
+    ]
+
+    items = parse_inventory(assets, descriptions)
+
+    assert len(items) == 1
+    item = items[0]
+    assert item.base_name == "AWP | Asiimov"
+    assert item.souvenir is True
+    assert item.stattrak is False
+
+
 def test_parse_inventory_skips_items_without_wear_suffix() -> None:
     assets = [{"assetid": "111", "classid": "c1", "instanceid": "0", "amount": "1"}]
     descriptions = [
