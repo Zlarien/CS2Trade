@@ -25,14 +25,11 @@ async def get_http_client() -> AsyncIterator[httpx.AsyncClient]:
         yield client
 
 
-def get_steam_api_key() -> str:
-    key = os.environ.get("STEAM_API_KEY")
-    if not key:
-        raise HTTPException(
-            status_code=500,
-            detail="STEAM_API_KEY manquant sur le serveur, voir .env.example",
-        )
-    return key
+def get_steam_api_key() -> str | None:
+    """None si absent : un SteamID64 brut ou une URL /profiles/<id> n'en ont
+    pas besoin (voir steam.public.resolve_steam_id64). Seule la resolution
+    d'un vanity name l'exige, et leve alors une erreur specifique."""
+    return os.environ.get("STEAM_API_KEY") or None
 
 
 def get_price_sources(

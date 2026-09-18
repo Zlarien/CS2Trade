@@ -88,6 +88,34 @@ async def test_skinport_uses_cache_on_second_call() -> None:
     assert len(calls) == 1
 
 
+@pytest.mark.asyncio
+async def test_skinport_returns_none_on_http_error_instead_of_raising() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(429)
+
+    source = SkinportPriceSource(http_client=_client_with_handler(handler))
+    quote = await source.get_price("AK-47 | Redline (Field-Tested)")
+
+    assert quote is None
+
+
+@pytest.mark.asyncio
+async def test_skinport_http_error_is_not_cached() -> None:
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(503)
+
+    cache = FakeCache()
+    source = SkinportPriceSource(http_client=_client_with_handler(handler), cache=cache)
+
+    await source.get_price("AK-47 | Redline (Field-Tested)")
+    await source.get_price("AK-47 | Redline (Field-Tested)")
+
+    assert len(calls) == 2  # jamais de cache d'un echec, sinon 15min de "aucun prix"
+
+
 def test_parse_eur_price_with_comma_decimal() -> None:
     assert parse_eur_price("31,83€") == 31.83
 
@@ -131,6 +159,21 @@ async def test_steam_market_returns_none_on_failure() -> None:
         http_client=_client_with_handler(handler), min_request_interval_seconds=0
     )
     quote = await source.get_price("Unknown Item")
+
+    assert quote is None
+
+
+@pytest.mark.asyncio
+async def test_steam_market_returns_none_on_http_error_instead_of_raising() -> None:
+    # Steam renvoie souvent une erreur HTTP (pas un JSON propre) pour un item
+    # sans historique de ventes : ne doit jamais faire planter la requete.
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500)
+
+    source = SteamMarketPriceSource(
+        http_client=_client_with_handler(handler), min_request_interval_seconds=0
+    )
+    quote = await source.get_price("Item Sans Historique")
 
     assert quote is None
 

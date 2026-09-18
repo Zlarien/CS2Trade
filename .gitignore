@@ -9,3 +9,4 @@ out/
 .pytest_cache/
 .ruff_cache/
 .claude/
+docker-compose.override.yml

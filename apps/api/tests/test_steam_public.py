@@ -4,6 +4,8 @@ import pytest
 from steam.public import (
     PrivateInventoryError,
     ProfileNotFoundError,
+    SteamApiKeyRequired,
+    SteamProfileError,
     extract_identifier,
     fetch_inventory,
     parse_inventory,
@@ -41,6 +43,28 @@ async def test_resolve_steam_id64_passthrough_for_numeric_id() -> None:
 
 
 @pytest.mark.asyncio
+async def test_resolve_steam_id64_passthrough_works_without_api_key() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no HTTP call expected for a raw SteamID64")
+
+    steamid = await resolve_steam_id64(
+        "76561198034202275", _client_with_handler(handler), steam_api_key=None
+    )
+    assert steamid == "76561198034202275"
+
+
+@pytest.mark.asyncio
+async def test_resolve_steam_id64_vanity_name_without_key_raises() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no HTTP call expected when the key is missing")
+
+    with pytest.raises(SteamApiKeyRequired):
+        await resolve_steam_id64(
+            "gabelogannewell", _client_with_handler(handler), steam_api_key=None
+        )
+
+
+@pytest.mark.asyncio
 async def test_resolve_steam_id64_calls_vanity_api() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.params["vanityurl"] == "gabelogannewell"
@@ -69,6 +93,26 @@ async def test_fetch_inventory_raises_on_private_profile() -> None:
         return httpx.Response(403)
 
     with pytest.raises(PrivateInventoryError):
+        await fetch_inventory("76561198034202275", _client_with_handler(handler))
+
+
+@pytest.mark.asyncio
+async def test_fetch_inventory_raises_clean_error_on_rate_limit() -> None:
+    # Reproduit un vrai 429 recu de Steam en test manuel (18/09/2026) : ne
+    # doit jamais laisser fuiter un httpx.HTTPStatusError brut (500 opaque).
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(429)
+
+    with pytest.raises(SteamProfileError, match="429|limite"):
+        await fetch_inventory("76561198034202275", _client_with_handler(handler))
+
+
+@pytest.mark.asyncio
+async def test_fetch_inventory_wraps_other_http_errors() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500)
+
+    with pytest.raises(SteamProfileError, match="500"):
         await fetch_inventory("76561198034202275", _client_with_handler(handler))
 
 

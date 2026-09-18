@@ -86,3 +86,25 @@ def test_get_recommendations_end_to_end(client: TestClient) -> None:
     assert len(body["recommendations"]) == 1
     assert body["recommendations"][0]["action"] == "sell"
     assert body["recommendations"][0]["price"] == pytest.approx(3.5)
+
+
+def test_numeric_steamid64_works_without_any_steam_api_key(
+    client: TestClient,
+) -> None:
+    # Le fixture "client" force deja dummy-key, on la retire explicitement :
+    # un SteamID64 brut ne doit jamais exiger de cle.
+    app.dependency_overrides[get_steam_api_key] = lambda: None
+
+    response = client.get("/inventory/recommendations", params={"identifier": STEAMID64})
+
+    assert response.status_code == 200
+    assert response.json()["steamid64"] == STEAMID64
+
+
+def test_vanity_name_without_key_returns_helpful_400(client: TestClient) -> None:
+    app.dependency_overrides[get_steam_api_key] = lambda: None
+
+    response = client.get("/inventory/recommendations", params={"identifier": "somevanityname"})
+
+    assert response.status_code == 400
+    assert "STEAM_API_KEY" in response.json()["detail"]
