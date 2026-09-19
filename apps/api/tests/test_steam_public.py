@@ -9,6 +9,7 @@ from steam.public import (
     extract_identifier,
     fetch_inventory,
     parse_inventory,
+    parse_misc_items,
     resolve_steam_id64,
 )
 
@@ -211,3 +212,39 @@ def test_parse_inventory_skips_items_without_wear_suffix() -> None:
 def test_parse_inventory_skips_assets_without_matching_description() -> None:
     assets = [{"assetid": "111", "classid": "unknown", "instanceid": "0", "amount": "1"}]
     assert parse_inventory(assets, []) == []
+
+
+def test_parse_misc_items_extracts_items_without_wear_suffix() -> None:
+    assets = [{"assetid": "111", "classid": "c1", "instanceid": "0", "amount": "1"}]
+    descriptions = [
+        {
+            "classid": "c1",
+            "instanceid": "0",
+            "market_hash_name": "Fracture Case",
+            "tradable": 1,
+            "marketable": 1,
+        }
+    ]
+
+    items = parse_misc_items(assets, descriptions)
+
+    assert len(items) == 1
+    assert items[0].asset_id == "111"
+    assert items[0].market_hash_name == "Fracture Case"
+    assert items[0].tradable is True
+    assert items[0].marketable is True
+
+
+def test_parse_misc_items_skips_skins() -> None:
+    assets = [{"assetid": "111", "classid": "c1", "instanceid": "0", "amount": "1"}]
+    descriptions = [
+        {
+            "classid": "c1",
+            "instanceid": "0",
+            "market_hash_name": "AK-47 | Redline (Field-Tested)",
+            "tradable": 1,
+            "marketable": 1,
+        }
+    ]
+
+    assert parse_misc_items(assets, descriptions) == []

@@ -10,7 +10,7 @@ from dependencies import (
     get_price_sources,
     require_premium_tier,
 )
-from inventory_import import get_recommendations_for_user
+from inventory_import import get_full_inventory
 from llm.investor import InvestorAdviceUnavailable, LLMProvider, get_investor_advice
 from pricing.base import PriceSource
 from steam.public import PrivateInventoryError, SteamProfileError
@@ -32,7 +32,7 @@ async def post_investor_advice(
     llm_client: LLMProvider = Depends(get_llm_provider),
 ) -> dict:
     try:
-        _, _, _, recommendations = await get_recommendations_for_user(
+        _, _, _, _, recommendations = await get_full_inventory(
             user.steamid64, excluded_item_ids, http_client, price_sources
         )
     except PrivateInventoryError as exc:

@@ -32,20 +32,26 @@ def get_steam_api_key() -> str | None:
     return os.environ.get("STEAM_API_KEY") or None
 
 
-def get_price_sources(
-    http_client: httpx.AsyncClient = Depends(get_http_client),
-) -> list[PriceSource]:
-    return [
-        SkinportPriceSource(http_client=http_client),
-        SteamMarketPriceSource(http_client=http_client),
-    ]
-
-
 def get_redis_client() -> Redis:
     global _redis_client
     if _redis_client is None:
         _redis_client = Redis.from_url(os.environ.get("REDIS_URL", "redis://localhost:6379/0"))
     return _redis_client
+
+
+def get_price_sources(
+    http_client: httpx.AsyncClient = Depends(get_http_client),
+    redis_client: Redis = Depends(get_redis_client),
+) -> list[PriceSource]:
+    """Cache Redis partage entre skins et items divers : sans lui, un seul
+    scan d'inventaire retelecharge le catalogue Skinport entier item par
+    item et martele Steam Market sans aucune reutilisation, ce qui declenche
+    des 429 sur la quasi-totalite d'un inventaire de taille normale.
+    """
+    return [
+        SkinportPriceSource(http_client=http_client, cache=redis_client),
+        SteamMarketPriceSource(http_client=http_client, cache=redis_client),
+    ]
 
 
 async def get_current_steamid64(

@@ -1,6 +1,6 @@
 import pytest
 
-from engine.valuation import build_market_hash_name, value_item
+from engine.valuation import build_market_hash_name, value_item, value_market_hash_name
 from pricing.base import PriceQuote, PriceSource
 
 
@@ -48,3 +48,16 @@ async def test_value_item_falls_back_to_second_source() -> None:
 async def test_value_item_returns_none_when_no_source_has_price() -> None:
     result = await value_item("AK-47 | Redline", "Field-Tested", [FakePriceSource({})])
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_value_market_hash_name_prices_a_name_directly() -> None:
+    name = "Fracture Case"
+    quote = PriceQuote(item_name=name, price=0.30, currency="EUR", source="skinport")
+    source = FakePriceSource({name: quote})
+
+    result = await value_market_hash_name(name, [source])
+
+    assert result is not None
+    assert result.market_hash_name == name
+    assert result.price == 0.30

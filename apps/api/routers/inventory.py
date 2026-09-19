@@ -8,18 +8,17 @@ from dependencies import (
     get_price_sources,
     get_steam_api_key,
 )
-from engine.recommend import InventoryItem, recommend_for_inventory
-from inventory_import import build_inventory_items, get_recommendations_for_user
+from engine.recommend import InventoryItem
+from inventory_import import get_full_inventory
 from pricing.base import PriceSource
 from steam.public import (
     ParsedInventoryItem,
+    ParsedMiscItem,
     PrivateInventoryError,
     ProfileNotFoundError,
     SteamApiKeyRequired,
     SteamProfileError,
     extract_identifier,
-    fetch_inventory,
-    parse_inventory,
     resolve_steam_id64,
 )
 
@@ -54,6 +53,27 @@ def _serialize_items(
     ]
 
 
+def _serialize_misc_items(
+    parsed_misc_items: list[ParsedMiscItem], excluded_item_ids: set[str]
+) -> list[dict]:
+    """Caisses, stickers, agents... : pas de skin, pas d'usure, mais une
+    valeur marche possible. Meme logique d'inclusion que _serialize_items :
+    tous restent visibles (y compris exclus) pour permettre l'exclusion.
+    """
+    return [
+        {
+            "item_id": p.asset_id,
+            "base_name": p.market_hash_name,
+            "wear": "",
+            "stattrak": False,
+            "souvenir": False,
+            "market_hash_name": p.market_hash_name,
+            "excluded": p.asset_id in excluded_item_ids,
+        }
+        for p in parsed_misc_items
+    ]
+
+
 @router.get("/recommendations")
 async def get_recommendations(
     identifier: str = Query(
@@ -71,7 +91,9 @@ async def get_recommendations(
     try:
         raw_identifier = extract_identifier(identifier)
         steamid64 = await resolve_steam_id64(raw_identifier, http_client, steam_api_key)
-        assets, descriptions = await fetch_inventory(steamid64, http_client)
+        parsed, parsed_misc, items, skipped_unknown, recommendations = await get_full_inventory(
+            steamid64, set(), http_client, price_sources
+        )
     except SteamApiKeyRequired as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except PrivateInventoryError as exc:
@@ -81,20 +103,13 @@ async def get_recommendations(
     except SteamProfileError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    parsed = parse_inventory(assets, descriptions)
-    items, skipped_unknown = build_inventory_items(parsed)
-
-    recommendations = await recommend_for_inventory(
-        items, excluded_item_ids=set(), price_sources=price_sources
-    )
-
     return {
         "steamid64": steamid64,
         "authenticated": False,
-        "item_count": len(items),
+        "item_count": len(items) + len(parsed_misc),
         "skipped_unknown_items": skipped_unknown,
         "float_is_estimated": True,
-        "items": _serialize_items(parsed, items, set()),
+        "items": _serialize_items(parsed, items, set()) + _serialize_misc_items(parsed_misc, set()),
         "recommendations": recommendations,
     }
 
@@ -108,7 +123,7 @@ async def get_my_recommendations(
 ) -> dict:
     """Compte Steam lie (OpenID) : applique les exclusions de l'utilisateur."""
     try:
-        parsed, items, skipped_unknown, recommendations = await get_recommendations_for_user(
+        parsed, parsed_misc, items, skipped_unknown, recommendations = await get_full_inventory(
             steamid64, excluded_item_ids, http_client, price_sources
         )
     except PrivateInventoryError as exc:
@@ -119,10 +134,11 @@ async def get_my_recommendations(
     return {
         "steamid64": steamid64,
         "authenticated": True,
-        "item_count": len(items),
+        "item_count": len(items) + len(parsed_misc),
         "excluded_count": len(excluded_item_ids),
         "skipped_unknown_items": skipped_unknown,
         "float_is_estimated": True,
-        "items": _serialize_items(parsed, items, excluded_item_ids),
+        "items": _serialize_items(parsed, items, excluded_item_ids)
+        + _serialize_misc_items(parsed_misc, excluded_item_ids),
         "recommendations": recommendations,
     }

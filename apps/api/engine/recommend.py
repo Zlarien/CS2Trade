@@ -5,7 +5,7 @@ from enum import StrEnum
 from engine import rules
 from engine.errors import PricingUnavailable, TradeUpNotEligible, UnknownSkin
 from engine.tradeup import OwnedItem, compute_trade_up
-from engine.valuation import value_item
+from engine.valuation import value_item, value_market_hash_name
 from pricing.base import PriceSource
 from refdata.loader import get_skin
 
@@ -143,3 +143,44 @@ async def recommend_for_inventory(
         for item in items
         if item.item_id not in excluded_item_ids
     ]
+
+
+@dataclass(frozen=True)
+class MiscItem:
+    """Item sans usure (caisse, sticker, agent, patch, pin, music kit...).
+
+    Jamais eligible au trade-up : juste garder ou vendre au prix marche.
+    """
+
+    item_id: str
+    market_hash_name: str
+
+
+async def recommend_for_misc_items(
+    items: list[MiscItem],
+    excluded_item_ids: set[str],
+    price_sources: list[PriceSource],
+) -> list[ItemRecommendation]:
+    recommendations: list[ItemRecommendation] = []
+    for item in items:
+        if item.item_id in excluded_item_ids:
+            continue
+        valuation = await value_market_hash_name(item.market_hash_name, price_sources)
+        if valuation is None:
+            recommendations.append(
+                ItemRecommendation(
+                    item_id=item.item_id,
+                    action=Action.HOLD,
+                    reason="prix indisponible sur les sources configurees",
+                )
+            )
+        else:
+            recommendations.append(
+                ItemRecommendation(
+                    item_id=item.item_id,
+                    action=Action.SELL,
+                    reason=f"valeur marche {valuation.price:.2f} {valuation.currency}",
+                    price=valuation.price,
+                )
+            )
+    return recommendations

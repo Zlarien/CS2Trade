@@ -155,7 +155,8 @@ function InventoryView() {
               <tr key={item.item_id}>
                 <td>
                   {item.stattrak ? "StatTrak™ " : ""}
-                  {item.base_name} ({item.wear})
+                  {item.base_name}
+                  {item.wear && ` (${item.wear})`}
                 </td>
                 <td>{item.excluded ? "Protege" : rec ? ACTION_LABELS[rec.action] : "-"}</td>
                 <td>{item.excluded ? "Exclu par toi, jamais touche" : (rec?.reason ?? "-")}</td>

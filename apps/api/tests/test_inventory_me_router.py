@@ -66,7 +66,7 @@ async def _seed_user(db_sessionmaker):
 
 
 @pytest.fixture
-def client(db_sessionmaker):
+def client(db_sessionmaker, fake_redis):
     async def override_db_session():
         async with db_sessionmaker() as session:
             yield session
@@ -78,6 +78,7 @@ def client(db_sessionmaker):
     app.dependency_overrides[dependencies.get_db_session] = override_db_session
     app.dependency_overrides[dependencies.get_http_client] = override_http_client
     app.dependency_overrides[dependencies.get_current_steamid64] = lambda: STEAMID64
+    app.dependency_overrides[dependencies.get_redis_client] = lambda: fake_redis
     try:
         yield TestClient(app)
     finally:

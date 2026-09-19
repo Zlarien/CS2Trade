@@ -150,6 +150,42 @@ class ParsedInventoryItem:
     marketable: bool
 
 
+@dataclass(frozen=True)
+class ParsedMiscItem:
+    """Item Steam sans usure dans son market_hash_name : caisse, sticker,
+    agent, patch, pin, music kit... Jamais un skin (voir parse_inventory)."""
+
+    asset_id: str
+    market_hash_name: str
+    tradable: bool
+    marketable: bool
+
+
+def parse_misc_items(assets: list[dict], descriptions: list[dict]) -> list[ParsedMiscItem]:
+    descriptions_by_key = {(d["classid"], d.get("instanceid", "0")): d for d in descriptions}
+
+    items: list[ParsedMiscItem] = []
+    for asset in assets:
+        key = (asset["classid"], asset.get("instanceid", "0"))
+        description = descriptions_by_key.get(key)
+        if description is None:
+            continue
+
+        market_hash_name = description.get("market_hash_name", "")
+        if not market_hash_name or _split_market_hash_name(market_hash_name) is not None:
+            continue  # vide, ou c'est un skin : deja gere par parse_inventory
+
+        items.append(
+            ParsedMiscItem(
+                asset_id=asset["assetid"],
+                market_hash_name=market_hash_name,
+                tradable=bool(description.get("tradable")),
+                marketable=bool(description.get("marketable")),
+            )
+        )
+    return items
+
+
 def parse_inventory(assets: list[dict], descriptions: list[dict]) -> list[ParsedInventoryItem]:
     descriptions_by_key = {(d["classid"], d.get("instanceid", "0")): d for d in descriptions}
 
