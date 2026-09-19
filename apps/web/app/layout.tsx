@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import "./globals.css";
+
 export const metadata = {
   title: "CS2Trade",
   description: "Recommandations garder / vendre / trade-up pour ton inventaire CS2",

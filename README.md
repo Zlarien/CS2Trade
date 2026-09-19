@@ -40,7 +40,13 @@ Deux modes, aucun ne nécessite de partager ton mot de passe Steam :
 
 ## IA investisseur (premium)
 
-`POST /me/investor-advice` synthétise en langage naturel les recommandations déjà calculées par `engine/` (jamais l'inverse : voir `llm/investor.py`). Nécessite `ANTHROPIC_API_KEY` et un compte en tier `premium`. Aucune route publique pour passer premium soi-même tant qu'aucune facturation n'est branchée : `python -m scripts.set_tier <steamid64> premium` est le seul levier, réservé à l'opérateur du self-host.
+`POST /me/investor-advice` synthétise en langage naturel les recommandations déjà calculées par `engine/` (jamais l'inverse : voir `llm/investor.py`). Nécessite un compte en tier `premium` et une clé LLM. Aucune route publique pour passer premium soi-même tant qu'aucune facturation n'est branchée : `python -m scripts.set_tier <steamid64> premium` est le seul levier, réservé à l'opérateur du self-host.
+
+Deux fournisseurs, choisis via `LLM_PROVIDER` :
+- `anthropic` (défaut) : `ANTHROPIC_API_KEY`, modèle `claude-opus-5`.
+- `groq` : `GROQ_API_KEY` (gratuit, console.groq.com/keys), modèle `openai/gpt-oss-120b`.
+
+`LLM_MODEL` surcharge le modèle par défaut du fournisseur actif.
 
 ## Licence
 

@@ -1,7 +1,6 @@
 import os
 from collections.abc import AsyncIterator
 
-import anthropic
 import httpx
 from fastapi import Cookie, Depends, HTTPException
 from redis.asyncio import Redis
@@ -11,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth.session import SESSION_COOKIE_NAME, get_session_steamid64
 from db.models import ExcludedItem, User
 from db.session import get_db_session as _get_db_session
+from llm.investor import LLMProvider, default_provider
 from pricing.base import PriceSource
 from pricing.skinport import SkinportPriceSource
 from pricing.steam_market import SteamMarketPriceSource
@@ -94,9 +94,10 @@ async def require_premium_tier(user: User = Depends(get_current_user)) -> User:
     return user
 
 
-def get_anthropic_client() -> anthropic.AsyncAnthropic:
-    """Cle resolue depuis l'environnement (ANTHROPIC_API_KEY), jamais en dur.
+def get_llm_provider() -> LLMProvider:
+    """Fournisseur choisi via LLM_PROVIDER (anthropic ou groq), cle lue depuis
+    l'environnement (ANTHROPIC_API_KEY / GROQ_API_KEY), jamais en dur.
 
     Surchargee en test pour ne jamais faire de vrai appel reseau.
     """
-    return anthropic.AsyncAnthropic()
+    return default_provider()

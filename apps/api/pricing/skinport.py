@@ -1,7 +1,11 @@
+import logging
+
 import httpx
 
 from pricing.base import PriceQuote, PriceSource
 from pricing.cache import AsyncCache, get_json, set_json
+
+logger = logging.getLogger(__name__)
 
 ITEMS_ENDPOINT = "https://api.skinport.com/v1/items"
 CS2_APP_ID = 730
@@ -48,10 +52,16 @@ class SkinportPriceSource(PriceSource):
         )
         try:
             response.raise_for_status()
-        except httpx.HTTPStatusError:
+        except httpx.HTTPStatusError as exc:
             # Skinport en panne/rate-limite : pas d'exception qui casse toute
             # la recommandation, juste "pas de prix ici" (value_item essaie
-            # la source suivante).
+            # la source suivante). Logue quand meme, sinon une panne qui dure
+            # des mois est invisible.
+            logger.warning(
+                "skinport catalogue indisponible (HTTP %s) : %s",
+                exc.response.status_code,
+                exc.response.text[:200],
+            )
             return {}
         items = response.json()
 

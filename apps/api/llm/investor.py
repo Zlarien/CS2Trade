@@ -5,16 +5,21 @@ recommandations deja produites par engine.recommend (deterministe) et les
 synthetise en langage naturel. engine/ n'importe jamais ce module (verifie
 par import-linter), pour que le tier gratuit n'ait jamais de dependance a
 une cle LLM.
+
+Le fournisseur (Anthropic ou Groq) se choisit via LLM_PROVIDER, pour
+pouvoir tourner sur une cle gratuite (Groq) sans toucher au reste du code.
 """
 
 import os
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-
-import anthropic
 
 from engine.recommend import ItemRecommendation
 
-DEFAULT_MODEL = "claude-opus-5"
+DEFAULT_MODEL_BY_PROVIDER = {
+    "anthropic": "claude-opus-5",
+    "groq": "openai/gpt-oss-120b",
+}
 MAX_TOKENS = 2048
 
 SYSTEM_PROMPT = (
@@ -32,14 +37,72 @@ class InvestorAdviceUnavailable(Exception):
     pass
 
 
-@dataclass(frozen=True)
-class InvestorAdvice:
-    summary: str
-    model: str
+class LLMProviderError(Exception):
+    """Erreur remontee par un LLMProvider, quel que soit le SDK derriere."""
+
+
+class LLMProvider(ABC):
+    @abstractmethod
+    async def complete(self, *, system: str, user_message: str, model: str) -> str: ...
+
+
+class AnthropicProvider(LLMProvider):
+    def __init__(self, client=None) -> None:
+        import anthropic
+
+        self._client = client or anthropic.AsyncAnthropic()
+
+    async def complete(self, *, system: str, user_message: str, model: str) -> str:
+        import anthropic
+
+        try:
+            response = await self._client.messages.create(
+                model=model,
+                max_tokens=MAX_TOKENS,
+                system=system,
+                messages=[{"role": "user", "content": user_message}],
+            )
+        except anthropic.APIError as exc:
+            raise LLMProviderError(str(exc)) from exc
+        return next((block.text for block in response.content if block.type == "text"), "")
+
+
+class GroqProvider(LLMProvider):
+    def __init__(self, client=None) -> None:
+        import groq
+
+        self._client = client or groq.AsyncGroq()
+
+    async def complete(self, *, system: str, user_message: str, model: str) -> str:
+        import groq
+
+        try:
+            response = await self._client.chat.completions.create(
+                model=model,
+                max_tokens=MAX_TOKENS,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user_message},
+                ],
+            )
+        except groq.APIError as exc:
+            raise LLMProviderError(str(exc)) from exc
+        return response.choices[0].message.content or ""
+
+
+def provider_name() -> str:
+    return os.environ.get("LLM_PROVIDER", "anthropic")
 
 
 def _model() -> str:
-    return os.environ.get("LLM_MODEL", DEFAULT_MODEL)
+    name = provider_name()
+    return os.environ.get("LLM_MODEL") or DEFAULT_MODEL_BY_PROVIDER.get(
+        name, DEFAULT_MODEL_BY_PROVIDER["anthropic"]
+    )
+
+
+def default_provider() -> LLMProvider:
+    return GroqProvider() if provider_name() == "groq" else AnthropicProvider()
 
 
 def _format_recommendations(recommendations: list[ItemRecommendation]) -> str:
@@ -54,12 +117,18 @@ def _format_recommendations(recommendations: list[ItemRecommendation]) -> str:
     return "\n".join(lines)
 
 
+@dataclass(frozen=True)
+class InvestorAdvice:
+    summary: str
+    model: str
+
+
 async def get_investor_advice(
     recommendations: list[ItemRecommendation],
     question: str | None = None,
-    client: anthropic.AsyncAnthropic | None = None,
+    client: LLMProvider | None = None,
 ) -> InvestorAdvice:
-    active_client = client or anthropic.AsyncAnthropic()
+    provider = client or default_provider()
     model = _model()
 
     data_block = _format_recommendations(recommendations)
@@ -69,14 +138,8 @@ async def get_investor_advice(
     )
 
     try:
-        response = await active_client.messages.create(
-            model=model,
-            max_tokens=MAX_TOKENS,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_message}],
-        )
-    except anthropic.APIError as exc:
+        text = await provider.complete(system=SYSTEM_PROMPT, user_message=user_message, model=model)
+    except LLMProviderError as exc:
         raise InvestorAdviceUnavailable(str(exc)) from exc
 
-    text = next((block.text for block in response.content if block.type == "text"), "")
     return InvestorAdvice(summary=text, model=model)
