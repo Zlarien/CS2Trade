@@ -42,15 +42,9 @@ def _steam_handler(request: httpx.Request) -> httpx.Response:
     raise AssertionError(f"unexpected request to {request.url}")
 
 
-class _FakeAnthropicMessages:
-    async def create(self, **kwargs):
-        block = type("Block", (), {"type": "text", "text": "Conseil de test."})()
-        return type("Resp", (), {"content": [block]})()
-
-
-class _FakeAnthropicClient:
-    def __init__(self) -> None:
-        self.messages = _FakeAnthropicMessages()
+class _FakeLLMProvider:
+    async def complete(self, *, system: str, user_message: str, model: str) -> str:
+        return "Conseil de test."
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -73,7 +67,7 @@ def _make_client(db_sessionmaker, steamid64: str) -> TestClient:
     app.dependency_overrides[dependencies.get_db_session] = override_db_session
     app.dependency_overrides[dependencies.get_http_client] = override_http_client
     app.dependency_overrides[dependencies.get_current_steamid64] = lambda: steamid64
-    app.dependency_overrides[dependencies.get_anthropic_client] = lambda: _FakeAnthropicClient()
+    app.dependency_overrides[dependencies.get_llm_provider] = lambda: _FakeLLMProvider()
     return TestClient(app)
 
 

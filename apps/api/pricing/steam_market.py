@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import re
 import time
 
@@ -6,6 +7,8 @@ import httpx
 
 from pricing.base import PriceQuote, PriceSource
 from pricing.cache import AsyncCache, get_json, set_json
+
+logger = logging.getLogger(__name__)
 
 PRICEOVERVIEW_ENDPOINT = "https://steamcommunity.com/market/priceoverview/"
 CS2_APP_ID = 730
@@ -65,10 +68,16 @@ class SteamMarketPriceSource(PriceSource):
         )
         try:
             response.raise_for_status()
-        except httpx.HTTPStatusError:
+        except httpx.HTTPStatusError as exc:
             # Steam renvoie souvent une erreur HTTP (pas un JSON propre) pour
             # un item sans historique de ventes, en plus des vraies pannes :
-            # traite comme "pas de prix ici", jamais comme un crash.
+            # traite comme "pas de prix ici", jamais comme un crash. Logue en
+            # debug (pas warning : c'est le cas frequent, pas l'anomalie).
+            logger.debug(
+                "steam_market pas de prix pour %r (HTTP %s)",
+                item_name,
+                exc.response.status_code,
+            )
             return None
         payload = response.json()
 

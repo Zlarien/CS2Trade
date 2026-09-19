@@ -94,9 +94,10 @@ function InventoryView() {
   }
 
   if (error) {
+    const notLoggedIn = !identifier && error.includes("authentifie");
     return (
       <main>
-        <p>Erreur : {error}</p>
+        <p>{notLoggedIn ? "Connecte-toi d'abord via Steam, ou importe un SteamID64." : `Erreur : ${error}`}</p>
         <Link href="/">Retour</Link>
       </main>
     );
@@ -105,6 +106,10 @@ function InventoryView() {
   if (!data) return null;
 
   const recommendationsByItemId = new Map(data.recommendations.map((r) => [r.item_id, r]));
+  const sellValue = data.recommendations
+    .filter((r) => r.action === "sell" && r.price != null)
+    .reduce((sum, r) => sum + (r.price ?? 0), 0);
+  const tradeUpCount = data.recommendations.filter((r) => r.action === "trade_up").length;
 
   return (
     <main>
@@ -117,6 +122,17 @@ function InventoryView() {
         {data.float_is_estimated &&
           "Float approxime (Steam ne l'expose pas via ses APIs publiques)."}
       </p>
+
+      <div className="summary-bar">
+        <span>
+          Valeur marche si vendu maintenant : <strong>{sellValue.toFixed(2)} EUR</strong>
+        </span>
+        {tradeUpCount > 0 && (
+          <span className="muted">
+            + {tradeUpCount} item(s) en trade-up recommande (EV, pas une valeur de revente)
+          </span>
+        )}
+      </div>
 
       {history.length > 1 && <PortfolioChart snapshots={history} />}
 

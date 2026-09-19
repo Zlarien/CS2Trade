@@ -1,35 +1,20 @@
-from dataclasses import dataclass
-
-import anthropic
-import httpx2
 import pytest
 
 from engine.recommend import Action, ItemRecommendation
-from llm.investor import InvestorAdviceUnavailable, get_investor_advice
+from llm.investor import InvestorAdviceUnavailable, LLMProviderError, get_investor_advice
 
 
-@dataclass
-class _FakeTextBlock:
-    text: str
-    type: str = "text"
-
-
-class _FakeMessages:
+class _FakeProvider:
     def __init__(self, response_text: str | None = None, error: Exception | None = None) -> None:
         self._response_text = response_text
         self._error = error
-        self.last_kwargs: dict | None = None
+        self.last_call: dict | None = None
 
-    async def create(self, **kwargs):
-        self.last_kwargs = kwargs
+    async def complete(self, *, system: str, user_message: str, model: str) -> str:
+        self.last_call = {"system": system, "user_message": user_message, "model": model}
         if self._error is not None:
             raise self._error
-        return type("FakeResponse", (), {"content": [_FakeTextBlock(self._response_text)]})()
-
-
-class _FakeAnthropicClient:
-    def __init__(self, response_text: str | None = None, error: Exception | None = None) -> None:
-        self.messages = _FakeMessages(response_text, error)
+        return self._response_text
 
 
 SAMPLE_RECOMMENDATIONS = [
@@ -44,9 +29,9 @@ SAMPLE_RECOMMENDATIONS = [
 
 @pytest.mark.asyncio
 async def test_get_investor_advice_returns_text_from_response() -> None:
-    fake_client = _FakeAnthropicClient(response_text="Priorise l'item 2 pour le trade-up.")
+    fake_provider = _FakeProvider(response_text="Priorise l'item 2 pour le trade-up.")
 
-    advice = await get_investor_advice(SAMPLE_RECOMMENDATIONS, None, client=fake_client)
+    advice = await get_investor_advice(SAMPLE_RECOMMENDATIONS, None, client=fake_provider)
 
     assert advice.summary == "Priorise l'item 2 pour le trade-up."
     assert advice.model
@@ -54,11 +39,11 @@ async def test_get_investor_advice_returns_text_from_response() -> None:
 
 @pytest.mark.asyncio
 async def test_get_investor_advice_includes_data_and_question_in_prompt() -> None:
-    fake_client = _FakeAnthropicClient(response_text="ok")
+    fake_provider = _FakeProvider(response_text="ok")
 
-    await get_investor_advice(SAMPLE_RECOMMENDATIONS, "Dois-je vendre maintenant ?", fake_client)
+    await get_investor_advice(SAMPLE_RECOMMENDATIONS, "Dois-je vendre maintenant ?", fake_provider)
 
-    sent_message = fake_client.messages.last_kwargs["messages"][0]["content"]
+    sent_message = fake_provider.last_call["user_message"]
     assert "item 1" in sent_message
     assert "trade-up vers Restricted" in sent_message
     assert "Dois-je vendre maintenant ?" in sent_message
@@ -66,19 +51,16 @@ async def test_get_investor_advice_includes_data_and_question_in_prompt() -> Non
 
 @pytest.mark.asyncio
 async def test_get_investor_advice_handles_empty_recommendations() -> None:
-    fake_client = _FakeAnthropicClient(response_text="Rien a recommander.")
+    fake_provider = _FakeProvider(response_text="Rien a recommander.")
 
-    advice = await get_investor_advice([], None, client=fake_client)
+    advice = await get_investor_advice([], None, client=fake_provider)
 
     assert advice.summary == "Rien a recommander."
 
 
 @pytest.mark.asyncio
 async def test_get_investor_advice_wraps_api_error() -> None:
-    connection_error = anthropic.APIConnectionError(
-        request=httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
-    )
-    fake_client = _FakeAnthropicClient(error=connection_error)
+    fake_provider = _FakeProvider(error=LLMProviderError("connexion impossible"))
 
     with pytest.raises(InvestorAdviceUnavailable):
-        await get_investor_advice(SAMPLE_RECOMMENDATIONS, None, client=fake_client)
+        await get_investor_advice(SAMPLE_RECOMMENDATIONS, None, client=fake_provider)
