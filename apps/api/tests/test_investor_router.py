@@ -55,7 +55,7 @@ async def _seed_users(db_sessionmaker):
         await session.commit()
 
 
-def _make_client(db_sessionmaker, steamid64: str) -> TestClient:
+def _make_client(db_sessionmaker, steamid64: str, fake_redis) -> TestClient:
     async def override_db_session():
         async with db_sessionmaker() as session:
             yield session
@@ -68,11 +68,12 @@ def _make_client(db_sessionmaker, steamid64: str) -> TestClient:
     app.dependency_overrides[dependencies.get_http_client] = override_http_client
     app.dependency_overrides[dependencies.get_current_steamid64] = lambda: steamid64
     app.dependency_overrides[dependencies.get_llm_provider] = lambda: _FakeLLMProvider()
+    app.dependency_overrides[dependencies.get_redis_client] = lambda: fake_redis
     return TestClient(app)
 
 
-def test_free_tier_is_blocked(db_sessionmaker) -> None:
-    client = _make_client(db_sessionmaker, FREE_STEAMID64)
+def test_free_tier_is_blocked(db_sessionmaker, fake_redis) -> None:
+    client = _make_client(db_sessionmaker, FREE_STEAMID64, fake_redis)
     try:
         response = client.post("/me/investor-advice", json={})
         assert response.status_code == 403
@@ -80,8 +81,8 @@ def test_free_tier_is_blocked(db_sessionmaker) -> None:
         app.dependency_overrides.clear()
 
 
-def test_premium_tier_gets_advice(db_sessionmaker) -> None:
-    client = _make_client(db_sessionmaker, PREMIUM_STEAMID64)
+def test_premium_tier_gets_advice(db_sessionmaker, fake_redis) -> None:
+    client = _make_client(db_sessionmaker, PREMIUM_STEAMID64, fake_redis)
     try:
         response = client.post("/me/investor-advice", json={"question": "Que faire ?"})
         assert response.status_code == 200

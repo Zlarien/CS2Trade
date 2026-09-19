@@ -1,6 +1,12 @@
 import pytest
 
-from engine.recommend import Action, InventoryItem, recommend_for_inventory
+from engine.recommend import (
+    Action,
+    InventoryItem,
+    MiscItem,
+    recommend_for_inventory,
+    recommend_for_misc_items,
+)
 from pricing.base import PriceQuote, PriceSource
 
 
@@ -121,3 +127,39 @@ async def test_souvenir_item_is_priced_with_souvenir_market_hash_name() -> None:
     assert recommendations[0].action == Action.SELL
     # prix Souvenir (40.0), pas le prix normal (15.0)
     assert recommendations[0].price == pytest.approx(40.0)
+
+
+@pytest.mark.asyncio
+async def test_misc_item_with_price_is_sold() -> None:
+    items = [MiscItem(item_id="case-1", market_hash_name="Fracture Case")]
+    recommendations = await recommend_for_misc_items(
+        items,
+        excluded_item_ids=set(),
+        price_sources=[FakePriceSource({"Fracture Case": 0.30})],
+    )
+
+    assert len(recommendations) == 1
+    assert recommendations[0].action == Action.SELL
+    assert recommendations[0].price == pytest.approx(0.30)
+
+
+@pytest.mark.asyncio
+async def test_misc_item_without_price_is_held() -> None:
+    items = [MiscItem(item_id="case-1", market_hash_name="Fracture Case")]
+    recommendations = await recommend_for_misc_items(
+        items, excluded_item_ids=set(), price_sources=[FakePriceSource({})]
+    )
+
+    assert recommendations[0].action == Action.HOLD
+
+
+@pytest.mark.asyncio
+async def test_misc_item_excluded_is_never_recommended() -> None:
+    items = [MiscItem(item_id="case-1", market_hash_name="Fracture Case")]
+    recommendations = await recommend_for_misc_items(
+        items,
+        excluded_item_ids={"case-1"},
+        price_sources=[FakePriceSource({"Fracture Case": 0.30})],
+    )
+
+    assert recommendations == []

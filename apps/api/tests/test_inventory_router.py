@@ -2,6 +2,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
+import dependencies
 from dependencies import get_http_client, get_steam_api_key
 from main import app
 
@@ -46,7 +47,13 @@ SKINPORT_RESPONSE = [
         "currency": "EUR",
         "median_price": 3.5,
         "quantity": 42,
-    }
+    },
+    {
+        "market_hash_name": "Sticker | Katowice 2014",
+        "currency": "EUR",
+        "median_price": 120.0,
+        "quantity": 3,
+    },
 ]
 
 
@@ -59,13 +66,14 @@ def _handler(request: httpx.Request) -> httpx.Response:
 
 
 @pytest.fixture
-def client() -> TestClient:
+def client(fake_redis) -> TestClient:
     async def override_http_client():
         async with httpx.AsyncClient(transport=httpx.MockTransport(_handler)) as c:
             yield c
 
     app.dependency_overrides[get_http_client] = override_http_client
     app.dependency_overrides[get_steam_api_key] = lambda: "dummy-key"
+    app.dependency_overrides[dependencies.get_redis_client] = lambda: fake_redis
     try:
         yield TestClient(app)
     finally:
@@ -78,14 +86,17 @@ def test_get_recommendations_end_to_end(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["steamid64"] == STEAMID64
-    # Le sticker est deja filtre par steam.public.parse_inventory (pas d'usure
-    # dans son market_hash_name), il n'atteint jamais le compteur "unknown".
-    # Le skin fictif, lui, a une usure mais est absent du referentiel : compte.
-    assert body["item_count"] == 1
+    # Le sticker n'a pas d'usure : c'est un item divers (parse_misc_items),
+    # jamais un skin inconnu. Le skin fictif, lui, a une usure mais est
+    # absent du referentiel : seul celui-la compte comme "unknown".
+    assert body["item_count"] == 2
     assert body["skipped_unknown_items"] == 1
-    assert len(body["recommendations"]) == 1
-    assert body["recommendations"][0]["action"] == "sell"
-    assert body["recommendations"][0]["price"] == pytest.approx(3.5)
+    recommendations_by_id = {r["item_id"]: r for r in body["recommendations"]}
+    assert len(recommendations_by_id) == 2
+    assert recommendations_by_id["111"]["action"] == "sell"
+    assert recommendations_by_id["111"]["price"] == pytest.approx(3.5)
+    assert recommendations_by_id["222"]["action"] == "sell"
+    assert recommendations_by_id["222"]["price"] == pytest.approx(120.0)
 
 
 def test_numeric_steamid64_works_without_any_steam_api_key(

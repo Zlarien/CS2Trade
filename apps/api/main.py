@@ -1,3 +1,4 @@
+import logging
 import os
 
 from fastapi import FastAPI
@@ -8,6 +9,11 @@ from routers.excluded_items import router as excluded_items_router
 from routers.inventory import router as inventory_router
 from routers.investor import router as investor_router
 from routers.portfolio import router as portfolio_router
+
+# uvicorn ne configure que ses propres loggers (uvicorn.*) : sans ceci, le
+# logger racine n'a aucun handler et nos warnings (ex: pricing/*) sont
+# perdus au lieu d'apparaitre dans les logs du conteneur.
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
 app = FastAPI(title="CS2Trade API", version="0.1.0")
 app.add_middleware(

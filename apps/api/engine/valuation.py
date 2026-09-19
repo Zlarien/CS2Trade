@@ -20,14 +20,9 @@ def build_market_hash_name(
     return f"{prefix}{base_name} ({wear})"
 
 
-async def value_item(
-    base_name: str,
-    wear: str,
-    price_sources: list[PriceSource],
-    stattrak: bool = False,
-    souvenir: bool = False,
+async def value_market_hash_name(
+    market_hash_name: str, price_sources: list[PriceSource]
 ) -> ItemValuation | None:
-    market_hash_name = build_market_hash_name(base_name, wear, stattrak, souvenir)
     for source in price_sources:
         quote = await source.get_price(market_hash_name)
         if quote is not None:
@@ -38,3 +33,14 @@ async def value_item(
                 source=quote.source,
             )
     return None
+
+
+async def value_item(
+    base_name: str,
+    wear: str,
+    price_sources: list[PriceSource],
+    stattrak: bool = False,
+    souvenir: bool = False,
+) -> ItemValuation | None:
+    market_hash_name = build_market_hash_name(base_name, wear, stattrak, souvenir)
+    return await value_market_hash_name(market_hash_name, price_sources)
