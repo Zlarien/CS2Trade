@@ -10,3 +10,4 @@ out/
 .ruff_cache/
 .claude/
 docker-compose.override.yml
+*.tsbuildinfo
